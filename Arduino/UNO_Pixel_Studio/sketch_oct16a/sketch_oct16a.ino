@@ -1,7 +1,6 @@
 #include <WiFiS3.h>
 #include <MQTT.h>
 #include <Arduino_LED_Matrix.h>
-#include <EEPROM.h>
 
 // ==================== Wi-Fi ====================
 const char WIFI_SSID[] = "KMITL-WIFI";
@@ -31,21 +30,13 @@ unsigned long lastSerialBeat = 0;
 
 const unsigned long WIFI_RETRY_INTERVAL = 10000;
 const unsigned long MQTT_RETRY_INTERVAL = 5000;
-const unsigned long HEARTBEAT_INTERVAL  = 1000;   // ส่งทุก 1 วินาที
+const unsigned long HEARTBEAT_INTERVAL  = 1000;
 
 // ==================== State ====================
+// true เมื่อบอร์ดได้ภาพจริงแล้ว (จาก broker หรือจากเว็บ)
+// ก่อนหน้านั้นจะไม่ publish state เพื่อไม่ทับภาพเก่าใน broker
 bool matrixHasImage = false;
 bool ledIsOn = false;
-
-// ==================== Flash (EEPROM) Save ====================
-// โครงสร้าง 15 ไบต์: [0]=magic, [1..12]=96 พิกเซล (บิต), [13]=LED, [14]=checksum
-const int EEPROM_ADDR = 0;
-const int SAVE_SIZE = 14;
-const uint8_t SAVE_MAGIC = 0xA5;
-const unsigned long SAVE_DELAY_MS = 2000;   // รอให้หยุดวาด 2 วินาทีก่อนบันทึก (ถนอมหน่วยความจำ)
-
-bool saveDirty = false;
-unsigned long lastChangeAt = 0;
 
 // ==================== Prototypes ====================
 bool wifiReady();
@@ -56,9 +47,6 @@ bool applyPixels(const String &payload);
 void publishStatus();
 void publishState();
 void showBlank();
-void markDirty();
-void saveStateToFlash();
-bool loadStateFromFlash();
 
 // ==================== Helpers ====================
 bool wifiReady() {
@@ -79,16 +67,8 @@ void setup() {
   digitalWrite(LED_BUILTIN, LOW);
 
   matrix.begin();
+  showBlank();
 
-  // กู้ภาพล่าสุดจากหน่วยความจำ ถ้าไม่มีให้แสดงหน้าจอว่าง
-  if (loadStateFromFlash()) {
-    Serial.println("Restored last image from flash.");
-  } else {
-    Serial.println("No saved image. Showing blank.");
-    showBlank();
-  }
-
-  // ตรวจโมดูล Wi-Fi
   if (WiFi.status() == WL_NO_MODULE) {
     Serial.println("ERROR: ไม่พบโมดูล Wi-Fi");
     while (true) { delay(1000); }
@@ -104,7 +84,6 @@ void setup() {
   mqtt.setTimeout(5000);
   mqtt.onMessage(messageReceived);
 
-  // ถ้าบอร์ดหลุดแบบไม่ปกติ broker จะประกาศ offline ให้เว็บทันที
   mqtt.setWill(TOPIC_STATUS, "{\"online\":false}", false, 0);
 
   connectWiFi();
@@ -112,13 +91,6 @@ void setup() {
 
 void loop() {
   unsigned long now = millis();
-
-  // บันทึกลง flash เมื่อหยุดเปลี่ยนภาพครบ 2 วินาที (ทำงานได้แม้ไม่มีเน็ต)
-  if (saveDirty && now - lastChangeAt >= SAVE_DELAY_MS) {
-    saveStateToFlash();
-    saveDirty = false;
-    Serial.println("Saved image to flash.");
-  }
 
   if (!wifiReady()) {
     if (now - lastWiFiAttempt >= WIFI_RETRY_INTERVAL) {
@@ -136,18 +108,18 @@ void loop() {
     mqtt.loop();
   }
 
-  // ส่ง status + state ภาพทุก 1 วินาที
   now = millis();
   if (mqtt.connected() && now - lastHeartbeat >= HEARTBEAT_INTERVAL) {
     lastHeartbeat = now;
     publishStatus();
-    publishState();
+    publishState();   // ส่งเมื่อมีภาพจริงแล้วเท่านั้น
 
     if (now - lastSerialBeat >= 5000) {
       lastSerialBeat = now;
       Serial.print("Heartbeat OK, uptime = ");
       Serial.print(now / 1000);
-      Serial.println(" s");
+      Serial.print(" s, image = ");
+      Serial.println(matrixHasImage ? "yes" : "waiting");
     }
   }
 
@@ -211,15 +183,18 @@ void connectMQTT() {
   if (mqtt.connect(clientId)) {
     Serial.println("connected!");
 
-    // subscribe แล้วจะได้รับภาพล่าสุดที่เว็บส่งไว้ (retained) ทันที
-    if (mqtt.subscribe(TOPIC_RECEIVE)) {
-      Serial.println("Subscribed to receive topic.");
+    // subscribe ทั้งสอง topic: broker จะส่งภาพ retained ล่าสุดมาให้ทันที
+    // แม้ไม่มีใครเปิดเว็บค้างไว้
+    bool ok1 = mqtt.subscribe(TOPIC_RECEIVE);
+    bool ok2 = mqtt.subscribe(TOPIC_STATE);
+
+    if (ok1 && ok2) {
+      Serial.println("Subscribed. Pulling last image from broker...");
     } else {
       Serial.println("Subscribe failed.");
     }
 
     publishStatus();
-    publishState();
     mqtt.publish(TOPIC_SEND, "online");
   } else {
     Serial.print("FAILED. lastError = ");
@@ -232,6 +207,26 @@ void connectMQTT() {
 
 // ==================== Incoming MQTT ====================
 void messageReceived(String &topic, String &payload) {
+
+  // ---- ภาพ/สถานะเก่าที่ broker เก็บไว้: ใช้กู้ภาพตอนบูตเท่านั้น ----
+  if (topic == TOPIC_STATE) {
+    if (matrixHasImage) return;   // มีภาพแล้ว ไม่ต้องรับจาก state อีก
+
+    if (applyPixels(payload)) {
+      if (payload.indexOf("\"led\":true") >= 0) {
+        ledIsOn = true;
+        digitalWrite(LED_BUILTIN, HIGH);
+      } else if (payload.indexOf("\"led\":false") >= 0) {
+        ledIsOn = false;
+        digitalWrite(LED_BUILTIN, LOW);
+      }
+
+      Serial.println("Restored image from broker (state).");
+      publishState();
+    }
+    return;
+  }
+
   if (topic != TOPIC_RECEIVE) {
     return;
   }
@@ -239,7 +234,6 @@ void messageReceived(String &topic, String &payload) {
   if (payload == "on") {
     digitalWrite(LED_BUILTIN, HIGH);
     ledIsOn = true;
-    markDirty();
     mqtt.publish(TOPIC_SEND, "LED_BUILTIN_ON");
     publishState();
     return;
@@ -248,7 +242,6 @@ void messageReceived(String &topic, String &payload) {
   if (payload == "off") {
     digitalWrite(LED_BUILTIN, LOW);
     ledIsOn = false;
-    markDirty();
     mqtt.publish(TOPIC_SEND, "LED_BUILTIN_OFF");
     publishState();
     return;
@@ -260,8 +253,12 @@ void messageReceived(String &topic, String &payload) {
   }
 
   if (payload.indexOf("\"pixels\"") >= 0) {
+    bool firstImage = !matrixHasImage;
+
     if (applyPixels(payload)) {
-      markDirty();
+      if (firstImage) {
+        Serial.println("Restored image from broker (receive).");
+      }
       mqtt.publish(TOPIC_SEND, "image_received");
       publishState();
     } else {
@@ -320,67 +317,6 @@ void showBlank() {
   matrixHasImage = false;
 }
 
-// ==================== Flash Save / Load ====================
-void markDirty() {
-  saveDirty = true;
-  lastChangeAt = millis();
-}
-
-void saveStateToFlash() {
-  uint8_t data[SAVE_SIZE];
-  memset(data, 0, sizeof(data));
-
-  data[0] = SAVE_MAGIC;
-
-  for (int i = 0; i < 96; i++) {
-    if (frame[i / 12][i % 12]) {
-      data[1 + (i / 8)] |= (1 << (i % 8));
-    }
-  }
-
-  data[13] = ledIsOn ? 1 : 0;
-
-  uint8_t checksum = 0;
-  for (int i = 0; i < SAVE_SIZE; i++) {
-    checksum ^= data[i];
-  }
-
-  // update() เขียนเฉพาะไบต์ที่เปลี่ยน ช่วยยืดอายุหน่วยความจำ
-  for (int i = 0; i < SAVE_SIZE; i++) {
-    EEPROM.update(EEPROM_ADDR + i, data[i]);
-  }
-  EEPROM.update(EEPROM_ADDR + SAVE_SIZE, checksum);
-}
-
-bool loadStateFromFlash() {
-  uint8_t data[SAVE_SIZE];
-
-  for (int i = 0; i < SAVE_SIZE; i++) {
-    data[i] = EEPROM.read(EEPROM_ADDR + i);
-  }
-  uint8_t storedChecksum = EEPROM.read(EEPROM_ADDR + SAVE_SIZE);
-
-  uint8_t checksum = 0;
-  for (int i = 0; i < SAVE_SIZE; i++) {
-    checksum ^= data[i];
-  }
-
-  if (data[0] != SAVE_MAGIC || checksum != storedChecksum) {
-    return false;   // ยังไม่เคยบันทึก หรือข้อมูลเสีย
-  }
-
-  for (int i = 0; i < 96; i++) {
-    frame[i / 12][i % 12] = (data[1 + (i / 8)] >> (i % 8)) & 1;
-  }
-
-  ledIsOn = (data[13] == 1);
-  digitalWrite(LED_BUILTIN, ledIsOn ? HIGH : LOW);
-
-  matrix.renderBitmap(frame, 8, 12);
-  matrixHasImage = true;
-  return true;
-}
-
 // ==================== Status ====================
 void publishStatus() {
   if (!mqtt.connected()) return;
@@ -401,8 +337,10 @@ void publishStatus() {
 }
 
 // ==================== State (retained) ====================
+// ถ้ายังไม่ได้ภาพจริง จะไม่ publish อะไรเลย เพื่อไม่ทับภาพเก่าที่ broker เก็บไว้
 void publishState() {
   if (!mqtt.connected()) return;
+  if (!matrixHasImage) return;
 
   char buffer[384];
   int len = snprintf(buffer, sizeof(buffer), "{\"pixels\":[");
