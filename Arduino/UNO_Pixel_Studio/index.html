@@ -1,0 +1,957 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixel Studio | UNO R4 WiFi</title>
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #090b12;
+  --panel: #111522;
+  --panel2: #171c2c;
+  --line: #2b3248;
+  --text: #edf1ff;
+  --muted: #8993ad;
+  --purple: #a78bfa;
+  --cyan: #67e8f9;
+  --green: #4ade80;
+  --red: #fb7185;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(ellipse at top left, #24214c 0%, transparent 42%),
+    var(--bg);
+  color: var(--text);
+  font-family: system-ui, "Segoe UI", sans-serif;
+  min-height: 100vh;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--panel2);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px 13px;
+  transition: .15s;
+}
+
+button:hover { border-color: var(--purple); }
+button:active { transform: scale(.98); }
+
+button.primary {
+  background: var(--purple);
+  color: #17102e;
+  border-color: var(--purple);
+  font-weight: 750;
+}
+
+button.danger { color: var(--red); }
+button.active {
+  background: #302650;
+  border-color: var(--purple);
+}
+
+header {
+  max-width: 1200px;
+  margin: auto;
+  padding: 25px 22px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  width: 45px;
+  height: 45px;
+  display: grid;
+  place-items: center;
+  background: #282044;
+  border: 1px solid #5a4a88;
+  border-radius: 13px;
+  color: var(--cyan);
+  font-size: 25px;
+}
+
+h1 {
+  font-size: 23px;
+  margin: 0;
+  letter-spacing: -.5px;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 13px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 10px #fb718555;
+}
+
+.dot.ok {
+  background: var(--green);
+  box-shadow: 0 0 10px #4ade8055;
+}
+
+main {
+  max-width: 1200px;
+  margin: auto;
+  padding: 12px 22px 40px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat {
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #111522cc;
+  min-width: 0;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.stat-value {
+  font-size: 21px;
+  font-weight: 750;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(280px, .75fr);
+  gap: 16px;
+}
+
+.panel {
+  background: #111522eF;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 19px;
+  min-width: 0;
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+h2 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.board {
+  background: #080b12;
+  border: 1px solid #30374b;
+  border-radius: 14px;
+  padding: clamp(8px, 2vw, 20px);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: clamp(3px, .7vw, 7px);
+  touch-action: none;
+  user-select: none;
+}
+
+.pixel {
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 0;
+  border-radius: 5px;
+  background: #202637;
+  border: 1px solid #30384e;
+  touch-action: none;
+  transition: background .06s, border-color .06s;
+}
+
+.pixel.on {
+  background: var(--cyan);
+  border-color: #c4faff;
+  box-shadow: 0 0 9px #67e8f955;
+}
+
+.legend {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 13px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--cyan);
+}
+
+.section { margin-top: 22px; }
+
+.section-title {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: .7px;
+}
+
+.button-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.button-grid button { width: 100%; }
+
+.pattern-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pattern-grid button {
+  font-size: 12px;
+  padding: 10px 5px;
+}
+
+.controls-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.controls-row button { flex: 1; }
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid #272e41;
+  font-size: 13px;
+}
+
+.info-row:last-child { border-bottom: 0; }
+.info-row span:first-child { color: var(--muted); }
+.info-row span:last-child { text-align: right; overflow-wrap: anywhere; }
+
+.log {
+  height: 190px;
+  overflow-y: auto;
+  background: #090c14;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  font: 11px/1.7 ui-monospace, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.log-line { color: #aab5d0; }
+.log-line.good { color: var(--green); }
+.log-line.bad { color: var(--red); }
+
+footer {
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 22px;
+}
+
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stat { padding: 11px; }
+  .stat-value { font-size: 17px; }
+  header, main { padding-left: 14px; padding-right: 14px; }
+  .panel { padding: 14px; }
+}
+
+@media (max-width: 400px) {
+  .stats { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">▦</div>
+    <div>
+      <h1>Pixel Studio</h1>
+      <div class="subtitle">ARDUINO UNO R4 WIFI · REAL-TIME LED MATRIX</div>
+    </div>
+  </div>
+
+  <div class="status">
+    <span id="mqttDot" class="dot"></span>
+    <span id="mqttLabel">กำลังเชื่อมต่อ MQTT...</span>
+  </div>
+</header>
+
+<main>
+  <section class="stats">
+    <div class="stat">
+      <div class="stat-label">เปิดพิกเซล</div>
+      <div class="stat-value" id="pixelCount">0 / 96</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">การเชื่อมต่อบอร์ด</div>
+      <div class="stat-value" id="boardStatus">OFFLINE</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">การส่งภาพ</div>
+      <div class="stat-value" id="sendStatus">พร้อมใช้งาน</div>
+    </div>
+  </section>
+
+  <div class="layout">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>LED Matrix Editor</h2>
+        <span class="small">12 × 8 · 96 pixels</span>
+      </div>
+
+      <div class="board">
+        <div class="grid" id="pixelGrid"></div>
+      </div>
+
+      <div class="legend">
+        <span><i class="swatch"></i> LED เปิด</span>
+        <span>คลิกหรือลากเพื่อวาด</span>
+      </div>
+
+      <div class="section">
+        <div class="section-title">เครื่องมือวาดภาพ</div>
+        <div class="controls-row">
+          <button id="drawButton" class="active" type="button">✎ วาด</button>
+          <button id="eraseButton" type="button">⌫ ลบ</button>
+          <button id="invertButton" type="button">◐ กลับสี</button>
+          <button id="clearButton" class="danger" type="button">ล้างภาพ</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">ลายสำเร็จรูป</div>
+        <div class="pattern-grid">
+          <button data-pattern="heart" type="button">♥ หัวใจ</button>
+          <button data-pattern="smile" type="button">☺ ยิ้ม</button>
+          <button data-pattern="arrow" type="button">➜ ลูกศร</button>
+          <button data-pattern="check" type="button">✓ ถูกต้อง</button>
+          <button data-pattern="checker" type="button">▦ ตาราง</button>
+          <button data-pattern="blank" type="button">□ ว่างเปล่า</button>
+        </div>
+      </div>
+    </section>
+
+    <aside>
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Device Control</h2>
+          <span class="small">UNO R4 WiFi</span>
+        </div>
+
+        <div class="button-grid">
+          <button class="primary" id="sendButton" type="button">
+            ↗ ส่งภาพทันที
+          </button>
+          <button id="resendButton" type="button">
+            ⟳ ส่งภาพล่าสุด
+          </button>
+          <button id="ledOnButton" type="button">
+            LED บอร์ด ON
+          </button>
+          <button id="ledOffButton" type="button">
+            LED บอร์ด OFF
+          </button>
+        </div>
+
+        <div class="section">
+          <div class="section-title">สถานะอุปกรณ์</div>
+          <div class="info-row">
+            <span>MQTT</span><span id="mqttInfo">Connecting</span>
+          </div>
+          <div class="info-row">
+            <span>Arduino</span><span id="boardInfo">รอ heartbeat</span>
+          </div>
+          <div class="info-row">
+            <span>IP Address</span><span id="ipInfo">-</span>
+          </div>
+          <div class="info-row">
+            <span>Uptime</span><span id="uptimeInfo">-</span>
+          </div>
+          <div class="info-row">
+            <span>ส่งภาพล่าสุด</span><span id="lastSentInfo">-</span>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="panel-head">
+            <h2>Event Log</h2>
+            <button id="clearLogButton" type="button">ล้าง Log</button>
+          </div>
+          <div id="log" class="log"></div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <footer>
+    Pixel Studio · MQTT WebSocket · HiveMQ Public Broker
+  </footer>
+</main>
+
+<script>
+"use strict";
+
+// ==================== MQTT Configuration ====================
+const MQTT_URL = "wss://broker.hivemq.com:8884/mqtt";
+
+const TOPIC_SEND =
+  "it68070131/arduino-uno-r4/send";
+
+const TOPIC_RECEIVE =
+  "it68070131/arduino-uno-r4/receive";
+
+const TOPIC_STATUS =
+  "it68070131/arduino-uno-r4/status";
+
+// ==================== Application State ====================
+const ROWS = 8;
+const COLS = 12;
+const TOTAL = ROWS * COLS;
+
+let pixels = Array(TOTAL).fill(0);
+let client = null;
+let isDrawing = false;
+let drawValue = 1;
+let eraseMode = false;
+
+let lastSentImage = "";
+let lastHeartbeatAt = 0;
+let reconnectNoticeShown = false;
+let pendingSendTimer = null;
+let lastSentAt = null;
+
+// ==================== Elements ====================
+const gridElement = document.getElementById("pixelGrid");
+const logElement = document.getElementById("log");
+
+// ==================== Logging ====================
+function log(message, type = "") {
+  const line = document.createElement("div");
+  line.className = "log-line " + type;
+
+  const time = new Date().toLocaleTimeString("th-TH", {
+    hour12: false
+  });
+
+  line.textContent = "[" + time + "] " + message;
+  logElement.prepend(line);
+
+  while (logElement.children.length > 100) {
+    logElement.lastElementChild.remove();
+  }
+}
+
+// ==================== Grid ====================
+function createGrid() {
+  gridElement.replaceChildren();
+
+  for (let i = 0; i < TOTAL; i++) {
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "pixel";
+    cell.dataset.index = String(i);
+    cell.setAttribute("aria-label", "Pixel " + i);
+    cell.setAttribute("aria-pressed", "false");
+
+    cell.addEventListener("pointerdown", event => {
+      if (event.button !== 0 && event.pointerType === "mouse") {
+        return;
+      }
+
+      event.preventDefault();
+      isDrawing = true;
+
+      drawValue = eraseMode ? 0 : (pixels[i] ? 0 : 1);
+      paintPixel(i, drawValue);
+    });
+
+    cell.addEventListener("pointerenter", () => {
+      if (!isDrawing) return;
+      paintPixel(i, drawValue);
+    });
+
+    gridElement.appendChild(cell);
+  }
+}
+
+window.addEventListener("pointerup", () => {
+  isDrawing = false;
+});
+
+window.addEventListener("pointercancel", () => {
+  isDrawing = false;
+});
+
+function renderGrid() {
+  const cells = gridElement.children;
+  let activeCount = 0;
+
+  for (let i = 0; i < TOTAL; i++) {
+    const on = pixels[i] === 1;
+    cells[i].classList.toggle("on", on);
+    cells[i].setAttribute("aria-pressed", String(on));
+
+    if (on) activeCount++;
+  }
+
+  document.getElementById("pixelCount").textContent =
+    activeCount + " / " + TOTAL;
+}
+
+// ==================== Real-time Drawing ====================
+function paintPixel(index, value) {
+  if (pixels[index] === value) return;
+
+  pixels[index] = value;
+  renderGrid();
+
+  // รวมการเปลี่ยนแปลงที่เกิดติดกันในช่วงสั้น ๆ
+  // เพื่อให้ลากวาดได้ลื่นและไม่ส่ง MQTT ถี่เกินไป
+  scheduleRealtimeSend();
+}
+
+function scheduleRealtimeSend() {
+  clearTimeout(pendingSendTimer);
+
+  pendingSendTimer = setTimeout(() => {
+    sendImage(false);
+  }, 35);
+}
+
+// ==================== Send Image ====================
+function sendImage(manual = true) {
+  if (!client || !client.connected) {
+    document.getElementById("sendStatus").textContent =
+      "รอ MQTT";
+
+    if (manual) {
+      log("ยังไม่ได้เชื่อมต่อ MQTT จึงส่งภาพไม่ได้", "bad");
+    }
+    return;
+  }
+
+  const payload = JSON.stringify({ pixels: pixels });
+  if (payload === lastSentImage) {
+    if (manual) log("ภาพปัจจุบันเหมือนภาพที่ส่งล่าสุดแล้ว");
+    return;
+  }
+
+  document.getElementById("sendStatus").textContent = "กำลังส่ง";
+
+  client.publish(
+    TOPIC_RECEIVE,
+    payload,
+    { qos: 0, retain: false },
+    error => {
+      if (error) {
+        document.getElementById("sendStatus").textContent =
+          "ส่งไม่สำเร็จ";
+        log("ส่งภาพไม่สำเร็จ: " + error.message, "bad");
+        return;
+      }
+
+      lastSentImage = payload;
+      lastSentAt = new Date();
+
+      document.getElementById("sendStatus").textContent =
+        "ส่งแล้ว";
+
+      document.getElementById("lastSentInfo").textContent =
+        lastSentAt.toLocaleTimeString("th-TH", { hour12: false });
+
+      if (manual) {
+        log("ส่งภาพ 96 pixels ไปยัง Arduino แล้ว", "good");
+      }
+    }
+  );
+}
+
+// ==================== Tools ====================
+function clearPixels() {
+  pixels.fill(0);
+  renderGrid();
+  sendImage(true);
+}
+
+function fillPixels() {
+  pixels.fill(1);
+  renderGrid();
+  sendImage(true);
+}
+
+function invertPixels() {
+  pixels = pixels.map(value => value ? 0 : 1);
+  renderGrid();
+  sendImage(true);
+}
+
+function setDrawMode(erase) {
+  eraseMode = erase;
+
+  document.getElementById("drawButton")
+    .classList.toggle("active", !erase);
+
+  document.getElementById("eraseButton")
+    .classList.toggle("active", erase);
+}
+
+// ==================== Patterns ====================
+const PATTERNS = {
+  heart: [
+    "001100110000",
+    "011110111100",
+    "111111111110",
+    "111111111110",
+    "011111111100",
+    "001111111000",
+    "000111110000",
+    "000011100000"
+  ],
+
+  smile: [
+    "000000000000",
+    "001000000100",
+    "001000000100",
+    "000000000000",
+    "100000000001",
+    "010000000010",
+    "001111111100",
+    "000000000000"
+  ],
+
+  arrow: [
+    "000001000000",
+    "000011000000",
+    "111111111110",
+    "111111111111",
+    "111111111110",
+    "000011000000",
+    "000001000000",
+    "000000000000"
+  ],
+
+  check: [
+    "000000000001",
+    "000000000011",
+    "000000000110",
+    "100000001100",
+    "110000011000",
+    "011000110000",
+    "001101100000",
+    "000111000000"
+  ],
+
+  checker: [
+    "101010101010",
+    "010101010101",
+    "101010101010",
+    "010101010101",
+    "101010101010",
+    "010101010101",
+    "101010101010",
+    "010101010101"
+  ],
+
+  blank: [
+    "000000000000",
+    "000000000000",
+    "000000000000",
+    "000000000000",
+    "000000000000",
+    "000000000000",
+    "000000000000",
+    "000000000000"
+  ]
+};
+
+function loadPattern(name) {
+  const pattern = PATTERNS[name];
+  if (!pattern) return;
+
+  pixels = pattern.join("").split("").map(Number);
+  renderGrid();
+  sendImage(true);
+
+  log("โหลดลาย: " + name, "good");
+}
+
+// ==================== MQTT Connection ====================
+function setMQTTStatus(connected) {
+  document.getElementById("mqttDot")
+    .classList.toggle("ok", connected);
+
+  document.getElementById("mqttLabel").textContent =
+    connected ? "MQTT Connected" : "MQTT Disconnected";
+
+  document.getElementById("mqttInfo").textContent =
+    connected ? "Connected" : "Disconnected";
+}
+
+function connectMQTT() {
+  if (typeof mqtt === "undefined") {
+    setMQTTStatus(false);
+    log("โหลด MQTT.js ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ต", "bad");
+    return;
+  }
+
+  log("กำลังเชื่อมต่อ HiveMQ...");
+
+  client = mqtt.connect(MQTT_URL, {
+    clientId: "PixelStudio_" +
+      Math.random().toString(16).slice(2, 12),
+
+    clean: true,
+    connectTimeout: 10000,
+    reconnectPeriod: 3000,
+    keepalive: 30
+  });
+
+  client.on("connect", () => {
+    setMQTTStatus(true);
+    reconnectNoticeShown = false;
+    log("เชื่อมต่อ MQTT สำเร็จ", "good");
+
+    client.subscribe([TOPIC_SEND, TOPIC_STATUS], error => {
+      if (error) {
+        log("Subscribe ไม่สำเร็จ: " + error.message, "bad");
+      } else {
+        log("Subscribe topics สำเร็จ", "good");
+
+        // ส่งภาพล่าสุดหลัง reconnect
+        lastSentImage = "";
+        sendImage(false);
+      }
+    });
+  });
+
+  client.on("reconnect", () => {
+    setMQTTStatus(false);
+
+    if (!reconnectNoticeShown) {
+      log("กำลังเชื่อมต่อ MQTT ใหม่...");
+      reconnectNoticeShown = true;
+    }
+  });
+
+  client.on("offline", () => {
+    setMQTTStatus(false);
+    log("MQTT offline", "bad");
+  });
+
+  client.on("error", error => {
+    setMQTTStatus(false);
+    log("MQTT error: " + error.message, "bad");
+  });
+
+  client.on("message", (topic, message) => {
+    const payload = message.toString();
+
+    if (topic === TOPIC_STATUS) {
+      try {
+        const status = JSON.parse(payload);
+
+        if (status.online === true) {
+          lastHeartbeatAt = Date.now();
+
+          document.getElementById("boardStatus").textContent =
+            "ONLINE";
+
+          document.getElementById("boardInfo").textContent =
+            "ออนไลน์";
+
+          document.getElementById("ipInfo").textContent =
+            status.ip || "-";
+
+          document.getElementById("uptimeInfo").textContent =
+            formatUptime(status.uptime);
+        }
+      } catch (error) {
+        log("อ่าน status ไม่สำเร็จ: " + payload);
+      }
+      return;
+    }
+
+    if (topic === TOPIC_SEND) {
+      if (payload === "online") {
+        lastHeartbeatAt = Date.now();
+        document.getElementById("boardStatus").textContent =
+          "ONLINE";
+        document.getElementById("boardInfo").textContent =
+          "ออนไลน์";
+      } else if (payload === "image_received") {
+        document.getElementById("sendStatus").textContent =
+          "บอร์ดรับภาพแล้ว";
+      } else if (payload === "image_error") {
+        document.getElementById("sendStatus").textContent =
+          "ข้อมูลภาพผิด";
+        log("บอร์ดปฏิเสธข้อมูลภาพ", "bad");
+      } else {
+        log("Arduino: " + payload);
+      }
+    }
+  });
+}
+
+function formatUptime(seconds) {
+  if (typeof seconds !== "number" || !Number.isFinite(seconds)) {
+    return "-";
+  }
+
+  const total = Math.max(0, Math.floor(seconds));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+
+  return hours + "h " + minutes + "m " + secs + "s";
+}
+
+// ==================== Board Heartbeat Timeout ====================
+setInterval(() => {
+  if (!lastHeartbeatAt ||
+      Date.now() - lastHeartbeatAt > 15000) {
+    document.getElementById("boardStatus").textContent =
+      "OFFLINE";
+
+    document.getElementById("boardInfo").textContent =
+      "ไม่พบ heartbeat";
+  }
+}, 2000);
+
+// ==================== Button Events ====================
+document.getElementById("drawButton").addEventListener("click", () => {
+  setDrawMode(false);
+});
+
+document.getElementById("eraseButton").addEventListener("click", () => {
+  setDrawMode(true);
+});
+
+document.getElementById("invertButton").addEventListener("click", () => {
+  invertPixels();
+});
+
+document.getElementById("clearButton").addEventListener("click", () => {
+  clearPixels();
+});
+
+document.getElementById("sendButton").addEventListener("click", () => {
+  sendImage(true);
+});
+
+document.getElementById("resendButton").addEventListener("click", () => {
+  lastSentImage = "";
+  sendImage(true);
+});
+
+document.getElementById("ledOnButton").addEventListener("click", () => {
+  sendCommand("on");
+});
+
+document.getElementById("ledOffButton").addEventListener("click", () => {
+  sendCommand("off");
+});
+
+document.getElementById("clearLogButton").addEventListener("click", () => {
+  logElement.replaceChildren();
+});
+
+document.querySelectorAll("[data-pattern]").forEach(button => {
+  button.addEventListener("click", () => {
+    loadPattern(button.dataset.pattern);
+  });
+});
+
+function sendCommand(command) {
+  if (!client || !client.connected) {
+    log("ยังไม่ได้เชื่อมต่อ MQTT", "bad");
+    return;
+  }
+
+  client.publish(TOPIC_RECEIVE, command, { qos: 0, retain: false });
+  log("ส่งคำสั่ง: " + command, "good");
+}
+
+// ==================== Start ====================
+createGrid();
+renderGrid();
+connectMQTT();
+
+log("Pixel Studio พร้อมทำงาน");
+</script>
+</body>
+</html>
