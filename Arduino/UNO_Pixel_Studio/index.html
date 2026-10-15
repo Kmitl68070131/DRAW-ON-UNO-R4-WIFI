@@ -396,6 +396,9 @@ const TOPIC_STATE   = "it68070131/arduino-uno-r4/state";
 const SEND_THROTTLE_MS = 50;
 const LOCAL_GUARD_MS = 500;
 const BOARD_TIMEOUT_MS = 4000;
+const RESEND_AFTER_ONLINE_MS = 1500;
+const SEED_BROKER_AFTER_MS = 2500;
+const STORAGE_KEY = "pixelStudio:lastImage";
 
 // ==================== Application State ====================
 const ROWS = 8;
@@ -413,6 +416,10 @@ let lastHeartbeatAt = 0;
 let reconnectNoticeShown = false;
 let pendingSendTimer = null;
 let lastLocalChangeAt = 0;
+let resendTimer = null;
+let seedTimer = null;
+let imageKnown = false;          // มีภาพที่น่าเชื่อถือแล้ว (บันทึกไว้ / วาดเอง / รับจากคนอื่น)
+let gotRetainedImage = false;    // broker มีภาพ retained อยู่แล้วหรือไม่
 
 // ==================== Elements ====================
 const gridElement = document.getElementById("pixelGrid");
@@ -430,6 +437,30 @@ function log(message, type = "") {
 
   while (logElement.children.length > 100) {
     logElement.lastElementChild.remove();
+  }
+}
+
+// ==================== Save / Load (in this browser) ====================
+function saveLocal() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(pixels));
+  } catch (error) {
+    // เบราว์เซอร์ไม่อนุญาต ข้ามไป
+  }
+}
+
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+
+    const list = JSON.parse(raw);
+    if (!Array.isArray(list) || list.length !== TOTAL) return false;
+
+    pixels = list.map(v => (v ? 1 : 0));
+    return true;
+  } catch (error) {
+    return false;
   }
 }
 
@@ -487,7 +518,9 @@ function paintPixel(index, value) {
 
   pixels[index] = value;
   lastLocalChangeAt = Date.now();
+  imageKnown = true;
   renderGrid();
+  saveLocal();
   scheduleRealtimeSend();
 }
 
@@ -526,8 +559,8 @@ setInterval(() => {
 }, 1000);
 
 // ==================== Send Image ====================
-// ส่งแบบ retained: ถ้าบอร์ดออฟไลน์ broker จะเก็บภาพล่าสุดไว้
-// พอบอร์ดกลับมา จะได้รับภาพล่าสุดทันที
+// ส่งแบบ retained: broker เก็บภาพล่าสุดไว้ให้บอร์ดดึงเองได้ตลอด
+// แม้ไม่มีใครเปิดเว็บค้างไว้
 function sendImage(manual = true) {
   if (!client || !client.connected) {
     document.getElementById("sendStatus").textContent = "รอ MQTT";
@@ -585,11 +618,14 @@ function applyRemotePixels(list, sourceLabel) {
 
   const next = list.map(v => (v ? 1 : 0));
 
+  imageKnown = true;
+
   if (next.every((v, i) => v === pixels[i])) return true;
 
   pixels = next;
   lastSentImage = JSON.stringify({ pixels: pixels });
   renderGrid();
+  saveLocal();
 
   document.getElementById("syncInfo").textContent =
     new Date().toLocaleTimeString("th-TH", { hour12: false });
@@ -598,9 +634,7 @@ function applyRemotePixels(list, sourceLabel) {
   return true;
 }
 
-// state จากบอร์ด
-// ข้อความ retained (ค้างเก่าใน broker) ไม่ใช้ปรับภาพ เพราะอาจเก่ากว่าภาพล่าสุดที่คนวาด
-// ใช้เฉพาะข้อความสดที่บอร์ดส่งมา
+// state จากบอร์ด: ข้อความ retained (ค้างเก่าใน broker) ไม่ใช้ปรับภาพ
 function applyBoardState(payload, isRetained) {
   let state;
 
@@ -610,7 +644,7 @@ function applyBoardState(payload, isRetained) {
     return;
   }
 
-  if (!isRetained) {
+  if (!isRetained && state.pixels) {
     applyRemotePixels(state.pixels, "บอร์ด");
   }
 
@@ -619,30 +653,65 @@ function applyBoardState(payload, isRetained) {
   }
 }
 
-// ภาพจากผู้ใช้คนอื่น (รวมภาพล่าสุดที่ broker เก็บไว้ตอนเปิดเว็บใหม่)
-function applyIncomingImage(payload) {
+// ภาพจากผู้ใช้คนอื่น (รวมภาพล่าสุดที่ broker เก็บไว้ตอนเปิดเว็บ)
+function applyIncomingImage(payload, isRetained) {
   if (payload.indexOf("\"pixels\"") < 0) return;
+
+  if (isRetained) {
+    gotRetainedImage = true;   // broker มีภาพอยู่แล้ว ไม่ต้อง seed
+  }
 
   try {
     const data = JSON.parse(payload);
-    applyRemotePixels(data.pixels, "ผู้ใช้อื่น");
+    applyRemotePixels(data.pixels, "ภาพล่าสุด/ผู้ใช้อื่น");
   } catch (error) {
     // ไม่ใช่ JSON ภาพ ข้ามไป
   }
+}
+
+// ถ้า broker ไม่มีภาพเก็บไว้เลย แต่เว็บนี้มีภาพที่บันทึกไว้
+// ส่งขึ้น broker ให้ครั้งเดียว เพื่อให้บอร์ดดึงเองได้แม้ไม่มีใครเปิดเว็บ
+function scheduleSeedBroker() {
+  clearTimeout(seedTimer);
+
+  seedTimer = setTimeout(() => {
+    if (gotRetainedImage || !imageKnown) return;
+
+    lastSentImage = "";
+    sendImage(false);
+    log("broker ยังไม่มีภาพ จึงส่งภาพที่บันทึกไว้ขึ้นไปเก็บให้บอร์ด", "good");
+  }, SEED_BROKER_AFTER_MS);
+}
+
+// บอร์ดเพิ่งกลับมาออนไลน์ → ส่งภาพที่บันทึกไว้ให้อีกรอบ
+// (รอสักครู่ให้บอร์ดรับภาพ retained จาก broker ก่อน)
+function scheduleResendToBoard() {
+  clearTimeout(resendTimer);
+
+  resendTimer = setTimeout(() => {
+    if (!imageKnown) return;
+    lastSentImage = "";
+    sendImage(false);
+    log("บอร์ดกลับมาออนไลน์ ส่งภาพที่บันทึกไว้ให้แล้ว", "good");
+  }, RESEND_AFTER_ONLINE_MS);
 }
 
 // ==================== Tools ====================
 function clearPixels() {
   pixels.fill(0);
   lastLocalChangeAt = Date.now();
+  imageKnown = true;
   renderGrid();
+  saveLocal();
   sendImage(true);
 }
 
 function invertPixels() {
   pixels = pixels.map(value => (value ? 0 : 1));
   lastLocalChangeAt = Date.now();
+  imageKnown = true;
   renderGrid();
+  saveLocal();
   sendImage(true);
 }
 
@@ -722,7 +791,9 @@ function loadPattern(name) {
 
   pixels = pattern.join("").split("").map(Number);
   lastLocalChangeAt = Date.now();
+  imageKnown = true;
   renderGrid();
+  saveLocal();
   sendImage(true);
 
   log("โหลดลาย: " + name, "good");
@@ -759,6 +830,7 @@ function connectMQTT() {
   client.on("connect", () => {
     setMQTTStatus(true);
     reconnectNoticeShown = false;
+    gotRetainedImage = false;
     log("เชื่อมต่อ MQTT สำเร็จ", "good");
 
     client.subscribe(
@@ -768,6 +840,7 @@ function connectMQTT() {
           log("Subscribe ไม่สำเร็จ: " + error.message, "bad");
         } else {
           log("Subscribe topics สำเร็จ · อัปเดตอัตโนมัติ", "good");
+          scheduleSeedBroker();
         }
       }
     );
@@ -802,7 +875,7 @@ function connectMQTT() {
     }
 
     if (topic === TOPIC_RECEIVE) {
-      applyIncomingImage(payload);
+      applyIncomingImage(payload, isRetained);
       return;
     }
 
@@ -827,6 +900,7 @@ function connectMQTT() {
     if (topic === TOPIC_SEND) {
       if (payload === "online") {
         markBoardOnline();
+        if (!isRetained) scheduleResendToBoard();
       } else if (payload === "image_received") {
         document.getElementById("sendStatus").textContent = "บอร์ดรับภาพแล้ว";
       } else if (payload === "image_error") {
@@ -851,7 +925,6 @@ function formatUptime(seconds) {
 }
 
 // ==================== Commands ====================
-// คำสั่ง (on/off/sync) ไม่ retained เพื่อไม่ให้บอร์ดทำซ้ำตอนเปิดใหม่
 function sendCommand(command) {
   if (!client || !client.connected) {
     log("ยังไม่ได้เชื่อมต่อ MQTT", "bad");
@@ -891,6 +964,14 @@ document.querySelectorAll("[data-pattern]").forEach(button => {
 
 // ==================== Start ====================
 createGrid();
+
+// โหลดภาพที่บันทึกไว้ในเว็บ ก่อนต่อ MQTT
+if (loadLocal()) {
+  imageKnown = true;
+  lastSentImage = JSON.stringify({ pixels: pixels });   // ไม่ส่งทับตอนเพิ่งเปิดเว็บ
+  log("โหลดภาพที่บันทึกไว้ในเว็บแล้ว", "good");
+}
+
 renderGrid();
 connectMQTT();
 
