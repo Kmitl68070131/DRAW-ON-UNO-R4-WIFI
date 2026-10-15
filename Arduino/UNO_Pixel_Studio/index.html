@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -6,7 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pixel Studio | UNO R4 WiFi</title>
 
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script>
+  if (typeof mqtt === "undefined") {
+    document.write(
+      '<script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.10.1/mqtt.min.js"><\/script>'
+    );
+  }
+</script>
 
 <style>
 :root {
@@ -57,10 +63,7 @@ button.primary {
 }
 
 button.danger { color: var(--red); }
-button.active {
-  background: #302650;
-  border-color: var(--purple);
-}
+button.active { background: #302650; border-color: var(--purple); }
 
 header {
   max-width: 1200px;
@@ -73,11 +76,7 @@ header {
   flex-wrap: wrap;
 }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+.brand { display: flex; align-items: center; gap: 12px; }
 
 .logo {
   width: 45px;
@@ -91,17 +90,8 @@ header {
   font-size: 25px;
 }
 
-h1 {
-  font-size: 23px;
-  margin: 0;
-  letter-spacing: -.5px;
-}
-
-.subtitle {
-  color: var(--muted);
-  font-size: 12px;
-  margin-top: 4px;
-}
+h1 { font-size: 23px; margin: 0; letter-spacing: -.5px; }
+.subtitle { color: var(--muted); font-size: 12px; margin-top: 4px; }
 
 .status {
   display: flex;
@@ -122,16 +112,9 @@ h1 {
   box-shadow: 0 0 10px #fb718555;
 }
 
-.dot.ok {
-  background: var(--green);
-  box-shadow: 0 0 10px #4ade8055;
-}
+.dot.ok { background: var(--green); box-shadow: 0 0 10px #4ade8055; }
 
-main {
-  max-width: 1200px;
-  margin: auto;
-  padding: 12px 22px 40px;
-}
+main { max-width: 1200px; margin: auto; padding: 12px 22px 40px; }
 
 .stats {
   display: grid;
@@ -148,17 +131,10 @@ main {
   min-width: 0;
 }
 
-.stat-label {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.stat-value {
-  font-size: 21px;
-  font-weight: 750;
-  margin-top: 5px;
-  overflow-wrap: anywhere;
-}
+.stat-label { font-size: 12px; color: var(--muted); }
+.stat-value { font-size: 21px; font-weight: 750; margin-top: 5px; overflow-wrap: anywhere; }
+.stat-value.online { color: var(--green); }
+.stat-value.offline { color: var(--red); }
 
 .layout {
   display: grid;
@@ -167,7 +143,7 @@ main {
 }
 
 .panel {
-  background: #111522eF;
+  background: #111522ef;
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 19px;
@@ -182,15 +158,8 @@ main {
   margin-bottom: 15px;
 }
 
-h2 {
-  font-size: 16px;
-  margin: 0;
-}
-
-.small {
-  font-size: 12px;
-  color: var(--muted);
-}
+h2 { font-size: 16px; margin: 0; }
+.small { font-size: 12px; color: var(--muted); }
 
 .board {
   background: #080b12;
@@ -235,18 +204,8 @@ h2 {
   color: var(--muted);
 }
 
-.legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  background: var(--cyan);
-}
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.swatch { width: 10px; height: 10px; border-radius: 3px; background: var(--cyan); }
 
 .section { margin-top: 22px; }
 
@@ -258,31 +217,13 @@ h2 {
   letter-spacing: .7px;
 }
 
-.button-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px;
-}
-
+.button-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
 .button-grid button { width: 100%; }
 
-.pattern-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
+.pattern-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pattern-grid button { font-size: 12px; padding: 10px 5px; }
 
-.pattern-grid button {
-  font-size: 12px;
-  padding: 10px 5px;
-}
-
-.controls-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
+.controls-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .controls-row button { flex: 1; }
 
 .info-row {
@@ -313,12 +254,7 @@ h2 {
 .log-line.good { color: var(--green); }
 .log-line.bad { color: var(--red); }
 
-footer {
-  text-align: center;
-  color: var(--muted);
-  font-size: 11px;
-  margin-top: 22px;
-}
+footer { text-align: center; color: var(--muted); font-size: 11px; margin-top: 22px; }
 
 @media (max-width: 760px) {
   .layout { grid-template-columns: 1fr; }
@@ -341,7 +277,7 @@ footer {
     <div class="logo">▦</div>
     <div>
       <h1>Pixel Studio</h1>
-      <div class="subtitle">ARDUINO UNO R4 WIFI · REAL-TIME LED MATRIX</div>
+      <div class="subtitle">ARDUINO UNO R4 WIFI · SHARED REAL-TIME LED MATRIX</div>
     </div>
   </div>
 
@@ -359,7 +295,7 @@ footer {
     </div>
     <div class="stat">
       <div class="stat-label">การเชื่อมต่อบอร์ด</div>
-      <div class="stat-value" id="boardStatus">OFFLINE</div>
+      <div class="stat-value offline" id="boardStatus">OFFLINE</div>
     </div>
     <div class="stat">
       <div class="stat-label">การส่งภาพ</div>
@@ -380,7 +316,7 @@ footer {
 
       <div class="legend">
         <span><i class="swatch"></i> LED เปิด</span>
-        <span>คลิกหรือลากเพื่อวาด</span>
+        <span>คลิกหรือลากเพื่อวาด · ทุกคนเห็นพร้อมกัน แม้บอร์ดออฟไลน์</span>
       </div>
 
       <div class="section">
@@ -414,37 +350,21 @@ footer {
         </div>
 
         <div class="button-grid">
-          <button class="primary" id="sendButton" type="button">
-            ↗ ส่งภาพทันที
-          </button>
-          <button id="resendButton" type="button">
-            ⟳ ส่งภาพล่าสุด
-          </button>
-          <button id="ledOnButton" type="button">
-            LED บอร์ด ON
-          </button>
-          <button id="ledOffButton" type="button">
-            LED บอร์ด OFF
-          </button>
+          <button class="primary" id="sendButton" type="button">↗ ส่งภาพทันที</button>
+          <button id="syncButton" type="button">⟳ ซิงก์ภาพจากบอร์ด</button>
+          <button id="ledOnButton" type="button">LED บอร์ด ON</button>
+          <button id="ledOffButton" type="button">LED บอร์ด OFF</button>
         </div>
 
         <div class="section">
           <div class="section-title">สถานะอุปกรณ์</div>
-          <div class="info-row">
-            <span>MQTT</span><span id="mqttInfo">Connecting</span>
-          </div>
-          <div class="info-row">
-            <span>Arduino</span><span id="boardInfo">รอ heartbeat</span>
-          </div>
-          <div class="info-row">
-            <span>IP Address</span><span id="ipInfo">-</span>
-          </div>
-          <div class="info-row">
-            <span>Uptime</span><span id="uptimeInfo">-</span>
-          </div>
-          <div class="info-row">
-            <span>ส่งภาพล่าสุด</span><span id="lastSentInfo">-</span>
-          </div>
+          <div class="info-row"><span>MQTT</span><span id="mqttInfo">Connecting</span></div>
+          <div class="info-row"><span>Arduino</span><span id="boardInfo">รอ heartbeat</span></div>
+          <div class="info-row"><span>IP Address</span><span id="ipInfo">-</span></div>
+          <div class="info-row"><span>Uptime</span><span id="uptimeInfo">-</span></div>
+          <div class="info-row"><span>LED บอร์ด</span><span id="ledInfo">-</span></div>
+          <div class="info-row"><span>ส่งภาพล่าสุด</span><span id="lastSentInfo">-</span></div>
+          <div class="info-row"><span>อัปเดตล่าสุด</span><span id="syncInfo">รอข้อมูล</span></div>
         </div>
 
         <div class="section">
@@ -458,9 +378,7 @@ footer {
     </aside>
   </div>
 
-  <footer>
-    Pixel Studio · MQTT WebSocket · HiveMQ Public Broker
-  </footer>
+  <footer>Pixel Studio · MQTT WebSocket · HiveMQ Public Broker</footer>
 </main>
 
 <script>
@@ -469,14 +387,15 @@ footer {
 // ==================== MQTT Configuration ====================
 const MQTT_URL = "wss://broker.hivemq.com:8884/mqtt";
 
-const TOPIC_SEND =
-  "it68070131/arduino-uno-r4/send";
+const TOPIC_SEND    = "it68070131/arduino-uno-r4/send";
+const TOPIC_RECEIVE = "it68070131/arduino-uno-r4/receive";
+const TOPIC_STATUS  = "it68070131/arduino-uno-r4/status";
+const TOPIC_STATE   = "it68070131/arduino-uno-r4/state";
 
-const TOPIC_RECEIVE =
-  "it68070131/arduino-uno-r4/receive";
-
-const TOPIC_STATUS =
-  "it68070131/arduino-uno-r4/status";
+// ==================== Settings ====================
+const SEND_THROTTLE_MS = 50;
+const LOCAL_GUARD_MS = 500;
+const BOARD_TIMEOUT_MS = 4000;
 
 // ==================== Application State ====================
 const ROWS = 8;
@@ -493,21 +412,19 @@ let lastSentImage = "";
 let lastHeartbeatAt = 0;
 let reconnectNoticeShown = false;
 let pendingSendTimer = null;
-let lastSentAt = null;
+let lastLocalChangeAt = 0;
 
 // ==================== Elements ====================
 const gridElement = document.getElementById("pixelGrid");
 const logElement = document.getElementById("log");
+const boardStatusEl = document.getElementById("boardStatus");
 
 // ==================== Logging ====================
 function log(message, type = "") {
   const line = document.createElement("div");
   line.className = "log-line " + type;
 
-  const time = new Date().toLocaleTimeString("th-TH", {
-    hour12: false
-  });
-
+  const time = new Date().toLocaleTimeString("th-TH", { hour12: false });
   line.textContent = "[" + time + "] " + message;
   logElement.prepend(line);
 
@@ -529,9 +446,7 @@ function createGrid() {
     cell.setAttribute("aria-pressed", "false");
 
     cell.addEventListener("pointerdown", event => {
-      if (event.button !== 0 && event.pointerType === "mouse") {
-        return;
-      }
+      if (event.button !== 0 && event.pointerType === "mouse") return;
 
       event.preventDefault();
       isDrawing = true;
@@ -549,13 +464,8 @@ function createGrid() {
   }
 }
 
-window.addEventListener("pointerup", () => {
-  isDrawing = false;
-});
-
-window.addEventListener("pointercancel", () => {
-  isDrawing = false;
-});
+window.addEventListener("pointerup", () => { isDrawing = false; });
+window.addEventListener("pointercancel", () => { isDrawing = false; });
 
 function renderGrid() {
   const cells = gridElement.children;
@@ -565,12 +475,10 @@ function renderGrid() {
     const on = pixels[i] === 1;
     cells[i].classList.toggle("on", on);
     cells[i].setAttribute("aria-pressed", String(on));
-
     if (on) activeCount++;
   }
 
-  document.getElementById("pixelCount").textContent =
-    activeCount + " / " + TOTAL;
+  document.getElementById("pixelCount").textContent = activeCount + " / " + TOTAL;
 }
 
 // ==================== Real-time Drawing ====================
@@ -578,34 +486,57 @@ function paintPixel(index, value) {
   if (pixels[index] === value) return;
 
   pixels[index] = value;
+  lastLocalChangeAt = Date.now();
   renderGrid();
-
-  // รวมการเปลี่ยนแปลงที่เกิดติดกันในช่วงสั้น ๆ
-  // เพื่อให้ลากวาดได้ลื่นและไม่ส่ง MQTT ถี่เกินไป
   scheduleRealtimeSend();
 }
 
 function scheduleRealtimeSend() {
-  clearTimeout(pendingSendTimer);
+  if (pendingSendTimer) return;
 
   pendingSendTimer = setTimeout(() => {
+    pendingSendTimer = null;
     sendImage(false);
-  }, 35);
+  }, SEND_THROTTLE_MS);
 }
 
+// ==================== Board Online / Offline ====================
+function isBoardOnline() {
+  return lastHeartbeatAt > 0 && Date.now() - lastHeartbeatAt <= BOARD_TIMEOUT_MS;
+}
+
+function markBoardOnline() {
+  lastHeartbeatAt = Date.now();
+  boardStatusEl.textContent = "ONLINE";
+  boardStatusEl.className = "stat-value online";
+  document.getElementById("boardInfo").textContent = "ออนไลน์";
+}
+
+function markBoardOffline(reason) {
+  lastHeartbeatAt = 0;
+  boardStatusEl.textContent = "OFFLINE";
+  boardStatusEl.className = "stat-value offline";
+  document.getElementById("boardInfo").textContent = reason || "ไม่พบ heartbeat";
+}
+
+setInterval(() => {
+  if (lastHeartbeatAt && Date.now() - lastHeartbeatAt > BOARD_TIMEOUT_MS) {
+    markBoardOffline("ไม่พบ heartbeat");
+  }
+}, 1000);
+
 // ==================== Send Image ====================
+// ส่งแบบ retained: ถ้าบอร์ดออฟไลน์ broker จะเก็บภาพล่าสุดไว้
+// พอบอร์ดกลับมา จะได้รับภาพล่าสุดทันที
 function sendImage(manual = true) {
   if (!client || !client.connected) {
-    document.getElementById("sendStatus").textContent =
-      "รอ MQTT";
-
-    if (manual) {
-      log("ยังไม่ได้เชื่อมต่อ MQTT จึงส่งภาพไม่ได้", "bad");
-    }
+    document.getElementById("sendStatus").textContent = "รอ MQTT";
+    if (manual) log("ยังไม่ได้เชื่อมต่อ MQTT จึงส่งภาพไม่ได้", "bad");
     return;
   }
 
   const payload = JSON.stringify({ pixels: pixels });
+
   if (payload === lastSentImage) {
     if (manual) log("ภาพปัจจุบันเหมือนภาพที่ส่งล่าสุดแล้ว");
     return;
@@ -616,58 +547,109 @@ function sendImage(manual = true) {
   client.publish(
     TOPIC_RECEIVE,
     payload,
-    { qos: 0, retain: false },
+    { qos: 0, retain: true },
     error => {
       if (error) {
-        document.getElementById("sendStatus").textContent =
-          "ส่งไม่สำเร็จ";
+        document.getElementById("sendStatus").textContent = "ส่งไม่สำเร็จ";
         log("ส่งภาพไม่สำเร็จ: " + error.message, "bad");
         return;
       }
 
       lastSentImage = payload;
-      lastSentAt = new Date();
 
       document.getElementById("sendStatus").textContent =
-        "ส่งแล้ว";
+        isBoardOnline() ? "ส่งแล้ว" : "ส่งแล้ว (รอบอร์ด)";
 
       document.getElementById("lastSentInfo").textContent =
-        lastSentAt.toLocaleTimeString("th-TH", { hour12: false });
+        new Date().toLocaleTimeString("th-TH", { hour12: false });
 
       if (manual) {
-        log("ส่งภาพ 96 pixels ไปยัง Arduino แล้ว", "good");
+        log(
+          isBoardOnline()
+            ? "ส่งภาพ 96 pixels ไปยัง Arduino แล้ว"
+            : "บอร์ดออฟไลน์ เก็บภาพไว้ให้แล้ว จะแสดงเมื่อบอร์ดกลับมา",
+          "good"
+        );
       }
     }
   );
 }
 
+// ==================== Apply Remote Image ====================
+function applyRemotePixels(list, sourceLabel) {
+  if (!Array.isArray(list) || list.length !== TOTAL) return false;
+
+  if (isDrawing || pendingSendTimer || Date.now() - lastLocalChangeAt < LOCAL_GUARD_MS) {
+    return false;
+  }
+
+  const next = list.map(v => (v ? 1 : 0));
+
+  if (next.every((v, i) => v === pixels[i])) return true;
+
+  pixels = next;
+  lastSentImage = JSON.stringify({ pixels: pixels });
+  renderGrid();
+
+  document.getElementById("syncInfo").textContent =
+    new Date().toLocaleTimeString("th-TH", { hour12: false });
+
+  if (sourceLabel) log("ภาพอัปเดตจาก " + sourceLabel, "good");
+  return true;
+}
+
+// state จากบอร์ด
+// ข้อความ retained (ค้างเก่าใน broker) ไม่ใช้ปรับภาพ เพราะอาจเก่ากว่าภาพล่าสุดที่คนวาด
+// ใช้เฉพาะข้อความสดที่บอร์ดส่งมา
+function applyBoardState(payload, isRetained) {
+  let state;
+
+  try {
+    state = JSON.parse(payload);
+  } catch (error) {
+    return;
+  }
+
+  if (!isRetained) {
+    applyRemotePixels(state.pixels, "บอร์ด");
+  }
+
+  if (typeof state.led === "boolean") {
+    document.getElementById("ledInfo").textContent = state.led ? "ON" : "OFF";
+  }
+}
+
+// ภาพจากผู้ใช้คนอื่น (รวมภาพล่าสุดที่ broker เก็บไว้ตอนเปิดเว็บใหม่)
+function applyIncomingImage(payload) {
+  if (payload.indexOf("\"pixels\"") < 0) return;
+
+  try {
+    const data = JSON.parse(payload);
+    applyRemotePixels(data.pixels, "ผู้ใช้อื่น");
+  } catch (error) {
+    // ไม่ใช่ JSON ภาพ ข้ามไป
+  }
+}
+
 // ==================== Tools ====================
 function clearPixels() {
   pixels.fill(0);
-  renderGrid();
-  sendImage(true);
-}
-
-function fillPixels() {
-  pixels.fill(1);
+  lastLocalChangeAt = Date.now();
   renderGrid();
   sendImage(true);
 }
 
 function invertPixels() {
-  pixels = pixels.map(value => value ? 0 : 1);
+  pixels = pixels.map(value => (value ? 0 : 1));
+  lastLocalChangeAt = Date.now();
   renderGrid();
   sendImage(true);
 }
 
 function setDrawMode(erase) {
   eraseMode = erase;
-
-  document.getElementById("drawButton")
-    .classList.toggle("active", !erase);
-
-  document.getElementById("eraseButton")
-    .classList.toggle("active", erase);
+  document.getElementById("drawButton").classList.toggle("active", !erase);
+  document.getElementById("eraseButton").classList.toggle("active", erase);
 }
 
 // ==================== Patterns ====================
@@ -682,7 +664,6 @@ const PATTERNS = {
     "000111110000",
     "000011100000"
   ],
-
   smile: [
     "000000000000",
     "001000000100",
@@ -693,7 +674,6 @@ const PATTERNS = {
     "001111111100",
     "000000000000"
   ],
-
   arrow: [
     "000001000000",
     "000011000000",
@@ -704,7 +684,6 @@ const PATTERNS = {
     "000001000000",
     "000000000000"
   ],
-
   check: [
     "000000000001",
     "000000000011",
@@ -715,7 +694,6 @@ const PATTERNS = {
     "001101100000",
     "000111000000"
   ],
-
   checker: [
     "101010101010",
     "010101010101",
@@ -726,7 +704,6 @@ const PATTERNS = {
     "101010101010",
     "010101010101"
   ],
-
   blank: [
     "000000000000",
     "000000000000",
@@ -744,6 +721,7 @@ function loadPattern(name) {
   if (!pattern) return;
 
   pixels = pattern.join("").split("").map(Number);
+  lastLocalChangeAt = Date.now();
   renderGrid();
   sendImage(true);
 
@@ -752,8 +730,7 @@ function loadPattern(name) {
 
 // ==================== MQTT Connection ====================
 function setMQTTStatus(connected) {
-  document.getElementById("mqttDot")
-    .classList.toggle("ok", connected);
+  document.getElementById("mqttDot").classList.toggle("ok", connected);
 
   document.getElementById("mqttLabel").textContent =
     connected ? "MQTT Connected" : "MQTT Disconnected";
@@ -772,9 +749,7 @@ function connectMQTT() {
   log("กำลังเชื่อมต่อ HiveMQ...");
 
   client = mqtt.connect(MQTT_URL, {
-    clientId: "PixelStudio_" +
-      Math.random().toString(16).slice(2, 12),
-
+    clientId: "PixelStudio_" + Math.random().toString(16).slice(2, 12),
     clean: true,
     connectTimeout: 10000,
     reconnectPeriod: 3000,
@@ -786,17 +761,16 @@ function connectMQTT() {
     reconnectNoticeShown = false;
     log("เชื่อมต่อ MQTT สำเร็จ", "good");
 
-    client.subscribe([TOPIC_SEND, TOPIC_STATUS], error => {
-      if (error) {
-        log("Subscribe ไม่สำเร็จ: " + error.message, "bad");
-      } else {
-        log("Subscribe topics สำเร็จ", "good");
-
-        // ส่งภาพล่าสุดหลัง reconnect
-        lastSentImage = "";
-        sendImage(false);
+    client.subscribe(
+      [TOPIC_SEND, TOPIC_RECEIVE, TOPIC_STATUS, TOPIC_STATE],
+      error => {
+        if (error) {
+          log("Subscribe ไม่สำเร็จ: " + error.message, "bad");
+        } else {
+          log("Subscribe topics สำเร็จ · อัปเดตอัตโนมัติ", "good");
+        }
       }
-    });
+    );
   });
 
   client.on("reconnect", () => {
@@ -818,47 +792,45 @@ function connectMQTT() {
     log("MQTT error: " + error.message, "bad");
   });
 
-  client.on("message", (topic, message) => {
+  client.on("message", (topic, message, packet) => {
     const payload = message.toString();
+    const isRetained = !!(packet && packet.retain);
+
+    if (topic === TOPIC_STATE) {
+      applyBoardState(payload, isRetained);
+      return;
+    }
+
+    if (topic === TOPIC_RECEIVE) {
+      applyIncomingImage(payload);
+      return;
+    }
 
     if (topic === TOPIC_STATUS) {
       try {
         const status = JSON.parse(payload);
 
         if (status.online === true) {
-          lastHeartbeatAt = Date.now();
-
-          document.getElementById("boardStatus").textContent =
-            "ONLINE";
-
-          document.getElementById("boardInfo").textContent =
-            "ออนไลน์";
-
-          document.getElementById("ipInfo").textContent =
-            status.ip || "-";
-
+          markBoardOnline();
+          document.getElementById("ipInfo").textContent = status.ip || "-";
           document.getElementById("uptimeInfo").textContent =
             formatUptime(status.uptime);
+        } else if (status.online === false) {
+          markBoardOffline("บอร์ดหลุดการเชื่อมต่อ");
         }
       } catch (error) {
-        log("อ่าน status ไม่สำเร็จ: " + payload);
+        // ข้ามข้อมูลที่อ่านไม่ได้
       }
       return;
     }
 
     if (topic === TOPIC_SEND) {
       if (payload === "online") {
-        lastHeartbeatAt = Date.now();
-        document.getElementById("boardStatus").textContent =
-          "ONLINE";
-        document.getElementById("boardInfo").textContent =
-          "ออนไลน์";
+        markBoardOnline();
       } else if (payload === "image_received") {
-        document.getElementById("sendStatus").textContent =
-          "บอร์ดรับภาพแล้ว";
+        document.getElementById("sendStatus").textContent = "บอร์ดรับภาพแล้ว";
       } else if (payload === "image_error") {
-        document.getElementById("sendStatus").textContent =
-          "ข้อมูลภาพผิด";
+        document.getElementById("sendStatus").textContent = "ข้อมูลภาพผิด";
         log("บอร์ดปฏิเสธข้อมูลภาพ", "bad");
       } else {
         log("Arduino: " + payload);
@@ -868,9 +840,7 @@ function connectMQTT() {
 }
 
 function formatUptime(seconds) {
-  if (typeof seconds !== "number" || !Number.isFinite(seconds)) {
-    return "-";
-  }
+  if (typeof seconds !== "number" || !Number.isFinite(seconds)) return "-";
 
   const total = Math.max(0, Math.floor(seconds));
   const hours = Math.floor(total / 3600);
@@ -880,62 +850,8 @@ function formatUptime(seconds) {
   return hours + "h " + minutes + "m " + secs + "s";
 }
 
-// ==================== Board Heartbeat Timeout ====================
-setInterval(() => {
-  if (!lastHeartbeatAt ||
-      Date.now() - lastHeartbeatAt > 15000) {
-    document.getElementById("boardStatus").textContent =
-      "OFFLINE";
-
-    document.getElementById("boardInfo").textContent =
-      "ไม่พบ heartbeat";
-  }
-}, 2000);
-
-// ==================== Button Events ====================
-document.getElementById("drawButton").addEventListener("click", () => {
-  setDrawMode(false);
-});
-
-document.getElementById("eraseButton").addEventListener("click", () => {
-  setDrawMode(true);
-});
-
-document.getElementById("invertButton").addEventListener("click", () => {
-  invertPixels();
-});
-
-document.getElementById("clearButton").addEventListener("click", () => {
-  clearPixels();
-});
-
-document.getElementById("sendButton").addEventListener("click", () => {
-  sendImage(true);
-});
-
-document.getElementById("resendButton").addEventListener("click", () => {
-  lastSentImage = "";
-  sendImage(true);
-});
-
-document.getElementById("ledOnButton").addEventListener("click", () => {
-  sendCommand("on");
-});
-
-document.getElementById("ledOffButton").addEventListener("click", () => {
-  sendCommand("off");
-});
-
-document.getElementById("clearLogButton").addEventListener("click", () => {
-  logElement.replaceChildren();
-});
-
-document.querySelectorAll("[data-pattern]").forEach(button => {
-  button.addEventListener("click", () => {
-    loadPattern(button.dataset.pattern);
-  });
-});
-
+// ==================== Commands ====================
+// คำสั่ง (on/off/sync) ไม่ retained เพื่อไม่ให้บอร์ดทำซ้ำตอนเปิดใหม่
 function sendCommand(command) {
   if (!client || !client.connected) {
     log("ยังไม่ได้เชื่อมต่อ MQTT", "bad");
@@ -945,6 +861,33 @@ function sendCommand(command) {
   client.publish(TOPIC_RECEIVE, command, { qos: 0, retain: false });
   log("ส่งคำสั่ง: " + command, "good");
 }
+
+// ==================== Button Events ====================
+document.getElementById("drawButton").addEventListener("click", () => setDrawMode(false));
+document.getElementById("eraseButton").addEventListener("click", () => setDrawMode(true));
+document.getElementById("invertButton").addEventListener("click", invertPixels);
+document.getElementById("clearButton").addEventListener("click", clearPixels);
+
+document.getElementById("sendButton").addEventListener("click", () => {
+  lastSentImage = "";
+  sendImage(true);
+});
+
+document.getElementById("syncButton").addEventListener("click", () => {
+  lastLocalChangeAt = 0;
+  sendCommand("sync");
+});
+
+document.getElementById("ledOnButton").addEventListener("click", () => sendCommand("on"));
+document.getElementById("ledOffButton").addEventListener("click", () => sendCommand("off"));
+
+document.getElementById("clearLogButton").addEventListener("click", () => {
+  logElement.replaceChildren();
+});
+
+document.querySelectorAll("[data-pattern]").forEach(button => {
+  button.addEventListener("click", () => loadPattern(button.dataset.pattern));
+});
 
 // ==================== Start ====================
 createGrid();
