@@ -3,8 +3,8 @@
 #include <Arduino_LED_Matrix.h>
 
 // ==================== Wi-Fi ====================
-const char WIFI_SSID[] = "KMITL-WIFI";
-const char WIFI_PASSWORD[] = "1234567890";
+const char WIFI_SSID[] = "ชื่อ WIFI";
+const char WIFI_PASSWORD[] = "รหัส WIFI";
 
 // ==================== MQTT ====================
 const char MQTT_BROKER[] = "broker.hivemq.com";
